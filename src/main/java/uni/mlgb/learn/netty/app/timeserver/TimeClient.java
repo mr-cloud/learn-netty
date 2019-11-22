@@ -23,7 +23,7 @@ public class TimeClient {
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
-                            // encoder last
+                            // event flow: decoder -> time client
                             ch.pipeline().addLast(new UnixTimeCodec(), new TimeClientHandler());
                         }
                     });

@@ -33,7 +33,7 @@ public class TimeServer {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
-//                            ch.pipeline().addLast(new TimeServerHandler());
+                            // event flow: timer server -> encoder
                             ch.pipeline().addLast(new UnixTimeCodec(), new TimeServerHandler());
                         }
                     })
