@@ -2,14 +2,17 @@ package uni.mlgb.learn.netty.app.pubsub;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
+import uni.akilis.helper.LoggerX;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
+// FIXME cannot broadcast message
 public class LogEventBroadcaster {
     private final String logFilePath;
     private final int port;
@@ -31,21 +34,32 @@ public class LogEventBroadcaster {
     }
 
     private void start() {
-        Bootstrap bootstrap = new Bootstrap().group(this.group).channel(NioDatagramChannel.class)
+        Bootstrap bootstrap = new Bootstrap()
+                .group(this.group)
+                .channel(NioDatagramChannel.class)
+                .option(ChannelOption.SO_BROADCAST, true)
+                // TOKNOW 广播地址
                 .handler(new LogEventEncoder(new InetSocketAddress("255.255.255.255", this.port)));
-        this.channel = bootstrap.bind().syncUninterruptibly().channel();
+        this.channel = bootstrap.bind(0).syncUninterruptibly().channel();
+        LoggerX.println("Bound address", this.channel.localAddress());
         try {
             RandomAccessFile raf = new RandomAccessFile(logFilePath, "r");
-            long pos = 0;
+            long pos = raf.length();
+            raf.seek(pos);
             while (true) {
                 if (raf.length() > pos) {  // something new to read
                     String line = null;
                     while ((line = raf.readLine()) != null) {
                         int splitPos = line.indexOf(LogEvent.LOG_SEPARATOR);
-                        this.channel.write(new LogEvent(line.substring(splitPos), line.substring(0, splitPos)));
-                        pos = pos + line.getBytes().length;
+                        try {
+                            LoggerX.println("Read a line", line);
+                            this.channel.write(new LogEvent(line.substring(splitPos + LogEvent.LOG_SEPARATOR.length()), line.substring(0, splitPos)));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            LoggerX.error("Unparsable log", line);
+                        }
                     }
-                    raf.seek(pos);
+                    pos = raf.getFilePointer();
                 } else {
                     TimeUnit.SECONDS.sleep(1);
                 }

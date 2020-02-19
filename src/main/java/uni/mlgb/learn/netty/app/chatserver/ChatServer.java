@@ -41,6 +41,7 @@ public class ChatServer {
     }
 
     private void dispose() {
+        LoggerX.println("Disposes server now.");
         if (this.channel != null) {
             this.channel.close();
         }
